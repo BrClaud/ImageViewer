@@ -5,12 +5,15 @@
 #include <QPixmap>
 #include <QPointF>
 #include <QRectF>
+#include "imagewidget.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class MainWindow;
 }
 QT_END_NAMESPACE
+
+class ImageWidget;
 
 class MainWindow : public QMainWindow
 {
@@ -28,18 +31,18 @@ private slots:
 
 protected:
     // обработчики
-    void paintEvent(QPaintEvent* event) override;
+    // void paintEvent(QPaintEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
 
 private:
     void loadImage(const QString& path);
-    QPointF widgetToImagePos(const QPointF& widgetPos) const;
-    void updateDisplay();
+    void updateCoordinates(const QPointF& pos);
     void startDrawing(const QPointF& pos);
     void updateDrawing(const QPointF& pos);
     void finishDrawing();
+
 
     Ui::MainWindow *ui;
     QPixmap originalImage;    // Исходное изображение
@@ -51,7 +54,6 @@ private:
     QRectF currentRect;       // Текущий прямоугольник
     QList<QRectF> savedRects; // Сохраненные прямоугольники
 
-    int width_img;
-    int height_img;
+    ImageWidget* imageWidget;
 };
 #endif // MAINWINDOW_H

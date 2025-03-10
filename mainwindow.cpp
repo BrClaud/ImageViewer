@@ -11,6 +11,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
     setMouseTracking(true);
+    imageWidget = ui->image_widget;
 }
 
 MainWindow::~MainWindow()
@@ -24,7 +25,6 @@ void MainWindow::on_button_load_clicked()
     QString path = QFileDialog::getOpenFileName(this, "Open Image", "", "Images (*.png *.jmg *.bmp)" );
     if(!path.isEmpty()){
         loadImage(path);
-        updateDisplay();
     }
 
 }
@@ -38,14 +38,31 @@ void MainWindow::on_button_plus_clicked()
 {
     if(imageScale >= 3.0) return;
     imageScale += 0.25;
-    updateDisplay();
+
+    // Применяем масштабирование относительно центра
+    QPointF center = imageWidget->rect().center();
+    QPointF imageCenter = imageWidget->widgetToImagePos(center);
+    imageWidget->setScale(imageScale);
+
+    QPointF newCenter = imageWidget->widgetToImagePos(center);
+    imageOffset += (imageCenter - newCenter) * imageScale;
+    imageWidget->setOffset(imageOffset);
 }
 
 void MainWindow::on_button_minus_clicked()
 {
     if(imageScale <= 0.25) return;
     imageScale -= 0.25;
-    updateDisplay();
+
+    // Применяем масштабирование относительно центра
+    QPointF center = imageWidget->rect().center();
+    QPointF imageCenter = imageWidget->widgetToImagePos(center);
+    imageWidget->setScale(imageScale);
+
+    // // Корректируем смещение, чтобы центр оставался на месте
+    QPointF newCenter = imageWidget->widgetToImagePos(center);
+    imageOffset += (imageCenter - newCenter) * imageScale;
+    imageWidget->setOffset(imageOffset);
 }
 
 void MainWindow::loadImage(const QString& path){
@@ -54,93 +71,61 @@ void MainWindow::loadImage(const QString& path){
         qWarning()<<"Failed to load image: "<<path<<"\n";
     }
 
-    imageOffset = QPointF(0,0);
+    imageWidget->setImage(originalImage);
     imageScale = 1.0;
-    savedRects.clear();
-    width_img = QPixmap(path).width();
-    height_img = QPixmap(path).height();
+    imageWidget->setScale(imageScale);
+    imageWidget->setOffset(imageOffset);
 }
 
-// Преобразование координат виджета в координаты изображения
-QPointF MainWindow::widgetToImagePos(const QPointF& widgetPos) const{
-    return (widgetPos - imageOffset) / imageScale;
-}
-
-
-
-// Отрисовка всего содержимого
-void MainWindow::paintEvent(QPaintEvent* event) {
-    QMainWindow::paintEvent(event);
-    QPainter painter(this);
-
-    if (!originalImage.isNull()) {
-        // Рисуем изображение с учетом масштаба и смещения
-        painter.save();
-        painter.translate(imageOffset);
-        painter.scale(imageScale, imageScale);
-        painter.drawPixmap(0, 0, originalImage);
-        painter.restore();
-
-        // Рисуем все сохраненные прямоугольники
-        painter.setPen(QPen(Qt::red,2));
-        for (const QRectF& rect : savedRects) {
-            QRectF scaledRect = rect;
-            scaledRect.moveTo(rect.topLeft() * imageScale + imageOffset);
-            scaledRect.setSize(rect.size() * imageScale);
-            painter.drawRect(scaledRect);
-        }
-
-        if(isDrawing){
-            painter.setPen(QPen(Qt::blue,2));
-            QRectF scaledRect = currentRect;
-            scaledRect.moveTo(currentRect.topLeft() * imageScale + imageOffset);
-            scaledRect.setSize(currentRect.size() * imageScale);
-            painter.drawRect(scaledRect);
-        }
-    }
-}
-
-void MainWindow::updateDisplay(){
-    update();
-}
 // Начало рисования/перемещения
 void MainWindow::mousePressEvent(QMouseEvent* event){
     if(event->button() == Qt::LeftButton){
-        // если включен чекбокс
-        if(isDrawing){
-            // Начало рисования прямоугольника
-            startDrawing(widgetToImagePos(event->pos()));
-        }else{
-            // Начало перемещения изображения
-            isPanning = true;
-            lastMousePos = event->pos();
-        }
-        // записываем координаты в лейблы
-        QPointF currentPos = event->pos();
-        QPointF imagePos = widgetToImagePos(currentPos);
-        if(imagePos.x() > width_img || imagePos.x() < 0 || imagePos.y() > height_img || imagePos.y() < 0)
+        QPointF widgetPos = imageWidget->mapFromParent(event->pos());
+
+        if(imageWidget->isPointOnImage(widgetPos)){
+            QPointF imagePos = imageWidget->widgetToImagePos(widgetPos);
+
+            // если включен чекбокс
+            if(isDrawing){
+                // Начало рисования прямоугольника
+                startDrawing(imagePos);
+            }else{
+                updateCoordinates(imagePos);
+                // Начало перемещения изображения
+                isPanning = true;
+                lastMousePos = event->pos();
+            }
+        }else
         {
-            ui->label_x->setText("x: -");
-            ui->label_y->setText("y: -");
-        }else{
-            ui->label_x->setText("x: " + QString::number(imagePos.x(), 'f', 1));
-            ui->label_y->setText("y: " + QString::number(imagePos.y(), 'f', 1));
+            updateCoordinates(QPointF(-1,-1));
         }
     }
 }
 
 // обработка движения мыши
 void MainWindow::mouseMoveEvent(QMouseEvent* event){
-    QPointF currentPos = event->pos();
+    QPointF widgetPos = imageWidget->mapFromParent(event->pos());
 
     if(isPanning){
         // перемещение изображения
-        QPointF delta = currentPos - lastMousePos;
+        QPointF delta = event->pos() - lastMousePos;
         imageOffset += delta;
-        lastMousePos = currentPos;
-        updateDisplay();
+        imageWidget->setOffset(imageOffset);
+        lastMousePos = event->pos();
     }else if(isDrawing){
-        updateDrawing(widgetToImagePos(currentPos));
+        // Рисование прямоугольника
+        if(imageWidget->isPointOnImage(widgetPos)){
+            QPointF imagePos =imageWidget->widgetToImagePos(widgetPos);
+            updateDrawing(imagePos);
+        }
+    }
+
+    if(imageWidget->isPointOnImage(widgetPos)){
+        QPointF imagePos = imageWidget->widgetToImagePos(widgetPos);
+        updateDrawing(imagePos);
+    }else
+    {
+        updateCoordinates(QPointF(-1,-1));
     }
 }
 
@@ -157,22 +142,27 @@ void MainWindow::mouseReleaseEvent(QMouseEvent* event){
 
 // Начало рисования прямоугольника
 void MainWindow::startDrawing(const QPointF& pos){
-    currentRect.setTopLeft(pos);
-    currentRect.setSize(QSizeF(0,0));
+    imageWidget->startDrawing(pos);
 }
 
 // Обновление прямоугольника
 void MainWindow::updateDrawing(const QPointF& pos){
-    currentRect.setBottomRight(pos);
-    updateDisplay();
+    imageWidget->updateDrawing(pos);
 }
 
 
 // Завершение рисования
 void MainWindow::finishDrawing(){
-    savedRects.append(currentRect.normalized());
-    isDrawing = false;
-    ui->checkBox->setChecked(false);
-    updateDisplay();
+    imageWidget->finishDrawing();
+}
+
+void MainWindow::updateCoordinates(const QPointF& pos){
+    if(pos.x() < 0 || pos.y() < 0){
+        ui->label_x->setText("x: -");
+        ui->label_y->setText("y: -");
+    }else{
+        ui->label_x->setText("x: " + QString::number(static_cast<int>(pos.x()), 'f', 1));
+        ui->label_y->setText("y: " + QString::number(static_cast<int>(pos.y()), 'f', 1));
+    }
 }
 
