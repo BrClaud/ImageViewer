@@ -50,5 +50,8 @@ private:
     QPointF lastMousePos;     // Последняя позиция мыши
     QRectF currentRect;       // Текущий прямоугольник
     QList<QRectF> savedRects; // Сохраненные прямоугольники
+
+    int width_img;
+    int height_img;
 };
 #endif // MAINWINDOW_H
