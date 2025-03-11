@@ -1,79 +1,121 @@
 #include "imagewidget.h"
 #include <QPainter>
 
-
 ImageWidget::ImageWidget(QWidget *parent) : QWidget(parent) {}
 
-void ImageWidget::setImage(const QPixmap& pixmap){
-    image = pixmap;
-    update();
+void ImageWidget::setImage(const QPixmap &pixmap) {
+  if (pixmap.isNull())
+    return;
+
+  image = pixmap;
+
+  // Подгоняем изображение под размеры виджета
+  QSize widgetSize = size();
+  QSize imageSize = image.size();
+
+  if (imageSize.width() > widgetSize.width() ||
+      imageSize.height() > widgetSize.height()) {
+    // Если изображение больше виджета, уменьшаем его
+    image =
+        image.scaled(widgetSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+  }
+
+  update();
 }
 
-void ImageWidget::setScale(qreal scale){
-    this->scale = scale;
-    update();
+void ImageWidget::setScale(qreal scale) {
+  this->scale = scale;
+  update();
 }
 
-void ImageWidget::setOffset(const QPointF& offset){
-    this->offset = offset;
-    update();
+void ImageWidget::setOffset(const QPointF &offset) {
+  this->offset = offset;
+  update();
 }
 
-QPointF ImageWidget::widgetToImagePos(const QPointF& widgetPos) const {
-    QPointF imagePos = (widgetPos - offset) / scale;
-    return QPointF(static_cast<int>(imagePos.x()), static_cast<int>(imagePos.y()));
+void ImageWidget::setDrawing(bool drawing) { isDrawing = drawing; }
+QPointF ImageWidget::getOffset() {
+  if (!offset.isNull())
+    return offset;
+  else
+    return QPointF(-1, -1);
 }
 
-bool ImageWidget::isPointOnImage(const QPointF& widgetPos) const{
-    if(image.isNull()) return false;
-
-    QPointF imagePos = widgetToImagePos(widgetPos);
-
-    return imagePos.x()>= 0 && imagePos.y() >=0 &&
-           imagePos.x() < image.width() && imagePos.y() < image.height();
+QPointF ImageWidget::getImageCenter() const {
+  if (image.isNull())
+    return QPointF(0, 0);
+  return QPointF(image.width() / 2.0, image.height() / 2.0);
 }
 
-void ImageWidget::startDrawing(const QPointF& pos) {
-    isDrawing = true;
-    currentRect.setTopLeft(pos);
-    currentRect.setSize(QSizeF(0, 0));
-    update();
+QPointF ImageWidget::imageToWidgetPos(const QPointF &imagePos) const {
+  QPointF widgetPos = (imagePos * scale + offset);
+  return QPointF(static_cast<int>(widgetPos.x()),
+                 static_cast<int>(widgetPos.y()));
 }
 
-void ImageWidget::updateDrawing(const QPointF& pos) {
-    currentRect.setBottomRight(pos);
-    update();
+QPointF ImageWidget::widgetToImagePos(const QPointF &widgetPos) const {
+  QPointF imagePos = (widgetPos - offset) / scale;
+  return QPointF(static_cast<int>(imagePos.x()),
+                 static_cast<int>(imagePos.y()));
+}
+
+bool ImageWidget::isPointOnImage(const QPointF &widgetPos) const {
+  if (image.isNull())
+    return false;
+
+  QPointF imagePos = widgetToImagePos(widgetPos);
+
+  return imagePos.x() >= 0 && imagePos.y() >= 0 &&
+         imagePos.x() < image.width() && imagePos.y() < image.height();
+}
+
+void ImageWidget::startDrawing(const QPointF &pos) {
+  isDrawing = true;
+  currentRect.setTopLeft(pos);
+  currentRect.setSize(QSizeF(0, 0));
+  update();
+}
+
+void ImageWidget::updateDrawing(const QPointF &pos) {
+  currentRect.setBottomRight(pos);
+  update();
 }
 
 void ImageWidget::finishDrawing() {
-    savedRects.append(currentRect.normalized());
-    isDrawing = false;
-    update();
+  savedRects.append(currentRect.normalized());
+  isDrawing = false;
+  update();
 }
 
-void ImageWidget::paintEvent(QPaintEvent* event) {
-    QWidget::paintEvent(event);
+void ImageWidget::paintEvent(QPaintEvent *event) {
+  QWidget::paintEvent(event);
 
-    if (!image.isNull()) {
-        QPainter painter(this);
+  if (!image.isNull()) {
+    QPainter painter(this);
 
-        // Отрисовка изображения
-        painter.translate(offset);
-        painter.scale(scale, scale);
-        painter.drawPixmap(0, 0, image);
+    // Отрисовка изображения
+    painter.translate(offset);
+    painter.scale(scale, scale);
+    painter.drawPixmap(0, 0, image);
 
-        // Отрисовка сохраненных прямоугольников
-        painter.setPen(QPen(Qt::red, 2));
-        for (const QRectF& rect : savedRects) {
-            painter.drawRect(rect);
-        }
-
-        // Отрисовка текущего прямоугольника (если есть)
-        if (isDrawing) {
-            painter.setPen(QPen(Qt::blue, 2));
-            painter.drawRect(currentRect);
-        }
+    // Отрисовка сохраненных прямоугольников
+    painter.setPen(QPen(Qt::red, 2));
+    for (const QRectF &rect : savedRects) {
+      painter.drawRect(rect);
     }
+
+    // Отрисовка текущего прямоугольника (если есть)
+    if (isDrawing) {
+      painter.setPen(QPen(Qt::blue, 2));
+      painter.drawRect(currentRect);
+    }
+  }
 }
 
-
+void ImageWidget::clearImage() {
+  savedRects.clear();
+  offset = QPointF(0, 0);
+  scale = 1.0;
+  // currentRect = QRectF();
+  isDrawing = false;
+}
