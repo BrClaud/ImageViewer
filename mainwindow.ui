@@ -17,6 +17,9 @@
    <string notr="true"/>
   </property>
   <widget class="QWidget" name="centralwidget">
+   <property name="styleSheet">
+    <string notr="true"/>
+   </property>
    <layout class="QVBoxLayout" name="verticalLayout_2" stretch="5,90,5">
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout">
@@ -51,6 +54,9 @@
           <width>100</width>
           <height>100</height>
          </size>
+        </property>
+        <property name="styleSheet">
+         <string notr="true"/>
         </property>
        </widget>
       </item>

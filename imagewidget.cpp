@@ -1,11 +1,12 @@
 #include "imagewidget.h"
+
 #include <QPainter>
+#include <QPainterPath>
 
 ImageWidget::ImageWidget(QWidget *parent) : QWidget(parent) {}
 
 void ImageWidget::setImage(const QPixmap &pixmap) {
-  if (pixmap.isNull())
-    return;
+  if (pixmap.isNull()) return;
 
   image = pixmap;
 
@@ -42,8 +43,7 @@ QPointF ImageWidget::getOffset() {
 }
 
 QPointF ImageWidget::getImageCenter() const {
-  if (image.isNull())
-    return QPointF(0, 0);
+  if (image.isNull()) return QPointF(0, 0);
   return QPointF(image.width() / 2.0, image.height() / 2.0);
 }
 
@@ -60,8 +60,7 @@ QPointF ImageWidget::widgetToImagePos(const QPointF &widgetPos) const {
 }
 
 bool ImageWidget::isPointOnImage(const QPointF &widgetPos) const {
-  if (image.isNull())
-    return false;
+  if (image.isNull()) return false;
 
   QPointF imagePos = widgetToImagePos(widgetPos);
 
@@ -88,11 +87,34 @@ void ImageWidget::finishDrawing() {
 }
 
 void ImageWidget::paintEvent(QPaintEvent *event) {
-  QWidget::paintEvent(event);
+  // QWidget::paintEvent(event);
+
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing);
+
+    // Создаем путь для обрезки
+    QPainterPath borderPath;
+    borderPath.addRoundedRect(rect(), 10, 10);
+    painter.setPen(QPen(Qt::black,5));
+    painter.drawPath(borderPath);
+
+    const int padding = 2; // Отступ от краев виджета (в пикселях)
+    const int borderWidth = 2; // Толщина обводки
+
+    // Область для обрезки изображения (меньше виджета на padding + borderWidth)
+    QRect contentRect = rect().adjusted(
+        padding + borderWidth,
+        padding + borderWidth,
+        -padding - borderWidth,
+        -padding - borderWidth
+        );
+
+    // Обрезаем изображение
+    QPainterPath clipPath;
+    clipPath.addRoundedRect(contentRect,5,5);
+    painter.setClipPath(clipPath);
 
   if (!image.isNull()) {
-    QPainter painter(this);
-
     // Отрисовка изображения
     painter.translate(offset);
     painter.scale(scale, scale);
@@ -109,6 +131,7 @@ void ImageWidget::paintEvent(QPaintEvent *event) {
       painter.setPen(QPen(Qt::blue, 2));
       painter.drawRect(currentRect);
     }
+
   }
 }
 

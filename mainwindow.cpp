@@ -1,15 +1,25 @@
 #include "mainwindow.h"
-#include "ui_mainwindow.h"
+
 #include <QDebug>
 #include <QFileDialog>
 #include <QMouseEvent>
 #include <QPainter>
+
+#include "ui_mainwindow.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
   ui->setupUi(this);
   setMouseTracking(true);
   imageWidget = ui->image_widget;
+
+  // imageWidget->setStyleSheet(
+  //     "QWidget {"
+  //     "   border: 2px solid black;"
+  //     "   border-radius: 5px;"
+  //     "   background-color: transparent;" // Прозрачный фон
+  //     "}"
+  //     );
 }
 
 MainWindow::~MainWindow() { delete ui; }
@@ -27,8 +37,7 @@ void MainWindow::on_checkBox_stateChanged(int arg1) {
 }
 
 void MainWindow::on_button_plus_clicked() {
-  if (imageWidget->getScale() >= 3.0)
-    return;
+  if (imageWidget->getScale() >= 3.0) return;
 
   QPointF imageCenter = imageWidget->getImageCenter();
 
@@ -44,8 +53,7 @@ void MainWindow::on_button_plus_clicked() {
 }
 
 void MainWindow::on_button_minus_clicked() {
-  if (imageWidget->getScale() <= 0.25)
-    return;
+  if (imageWidget->getScale() <= 0.25) return;
 
   QPointF imageCenter = imageWidget->getImageCenter();
 

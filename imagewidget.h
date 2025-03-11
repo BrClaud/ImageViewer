@@ -5,7 +5,7 @@
 #include <QWidget>
 
 class ImageWidget : public QWidget {
-public:
+ public:
   ImageWidget(QWidget *parent = nullptr);
 
   void setImage(const QPixmap &pixmap);
@@ -25,17 +25,17 @@ public:
   void finishDrawing();
   void clearImage();
 
-protected:
+ protected:
   void paintEvent(QPaintEvent *event) override;
 
-private:
+ private:
   QPixmap image;
   qreal scale = 1.0;
-  QPointF offset; // Смещение изображения
+  QPointF offset;  // Смещение изображения
 
-  bool isDrawing = false; // Флаг режима рисования
+  bool isDrawing = false;  // Флаг режима рисования
   QRectF currentRect;
   QList<QRectF> savedRects;
 };
 
-#endif // IMAGEWIDGET_H
+#endif  // IMAGEWIDGET_H
